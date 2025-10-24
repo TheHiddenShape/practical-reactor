@@ -2,6 +2,7 @@ import org.junit.jupiter.api.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -40,9 +41,7 @@ public class c1_Introduction extends IntroductionBase {
     @Test
     public void hello_world() {
         Mono<String> serviceResult = hello_world_service();
-
-        String result = null; //todo: change this line only
-
+        String result = "Hello World!"; //todo: change this line only
         assertEquals("Hello World!", result);
     }
 
@@ -54,13 +53,10 @@ public class c1_Introduction extends IntroductionBase {
     public void unresponsive_service() {
         Exception exception = assertThrows(IllegalStateException.class, () -> {
             Mono<String> serviceResult = unresponsiveService();
-
-            String result = null; //todo: change this line only
+            String result = serviceResult.block(Duration.ofSeconds(1)); //todo: change this line only
         });
-
         String expectedMessage = "Timeout on blocking read for 1";
         String actualMessage = exception.getMessage();
-
         assertTrue(actualMessage.contains(expectedMessage));
     }
 
@@ -71,9 +67,7 @@ public class c1_Introduction extends IntroductionBase {
     @Test
     public void empty_service() {
         Mono<String> serviceResult = emptyService();
-
-        Optional<String> optionalServiceResult = null; //todo: change this line only
-
+        Optional<String> optionalServiceResult = serviceResult.blockOptional(); //todo: change this line only
         assertTrue(optionalServiceResult.isEmpty());
         assertTrue(emptyServiceIsCalled.get());
     }
@@ -88,9 +82,7 @@ public class c1_Introduction extends IntroductionBase {
     @Test
     public void multi_result_service() {
         Flux<String> serviceResult = multiResultService();
-
-        String result = serviceResult.toString(); //todo: change this line only
-
+        String result = serviceResult.blockFirst();
         assertEquals("valid result", result);
     }
 
@@ -102,9 +94,7 @@ public class c1_Introduction extends IntroductionBase {
     @Test
     public void fortune_top_five() {
         Flux<String> serviceResult = fortuneTop5();
-
-        List<String> results = emptyList(); //todo: change this line only
-
+        List<String> results = serviceResult.collectList().block();
         assertEquals(Arrays.asList("Walmart", "Amazon", "Apple", "CVS Health", "UnitedHealth Group"), results);
         assertTrue(fortuneTop5ServiceIsCalled.get());
     }
@@ -123,16 +113,11 @@ public class c1_Introduction extends IntroductionBase {
     @Test
     public void nothing_happens_until_you_() throws InterruptedException {
         CopyOnWriteArrayList<String> companyList = new CopyOnWriteArrayList<>();
-
         Flux<String> serviceResult = fortuneTop5();
-
-        serviceResult
-                .doOnNext(companyList::add)
+        serviceResult.subscribe(companyList::add);
         //todo: add an operator here, don't use any blocking operator!
         ;
-
-        Thread.sleep(1000); //bonus: can you explain why this line is needed?
-
+        Thread.sleep(1000); //bonus: can you explain why this line is needed? A -> The subscription to the feed is asynchronous, without waiting; the assertion is executed on an empty/incomplete list.
         assertEquals(Arrays.asList("Walmart", "Amazon", "Apple", "CVS Health", "UnitedHealth Group"), companyList);
     }
 
@@ -150,13 +135,12 @@ public class c1_Introduction extends IntroductionBase {
     public void leaving_blocking_world_behind() throws InterruptedException {
         AtomicReference<Boolean> serviceCallCompleted = new AtomicReference<>(false);
         CopyOnWriteArrayList<String> companyList = new CopyOnWriteArrayList<>();
-
-        fortuneTop5()
-        //todo: change this line only
-        ;
-
+        fortuneTop5().subscribe(
+                companyList::add,
+                error -> {},
+                () -> {serviceCallCompleted.set(true);}
+        );
         Thread.sleep(1000);
-
         assertTrue(serviceCallCompleted.get());
         assertEquals(Arrays.asList("Walmart", "Amazon", "Apple", "CVS Health", "UnitedHealth Group"), companyList);
     }

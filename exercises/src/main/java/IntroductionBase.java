@@ -20,6 +20,7 @@ public class IntroductionBase {
     }
 
     protected AtomicReference<Boolean> emptyServiceIsCalled = new AtomicReference<>(false);
+
     public Mono<String> emptyService() {
         return Mono.defer(()-> {
             emptyServiceIsCalled.set(true);
